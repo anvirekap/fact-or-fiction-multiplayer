@@ -3,13 +3,21 @@ const roomBadge=document.querySelector('#roomBadge');
 const toastEl=document.querySelector('#toast');
 let session=null,state=null,stream=null,selected=null,activeTab='create',toastTimer;
 const saved=localStorage.getItem('fof-session');
+const API_BASE =
+  location.hostname === "localhost" ||
+  location.hostname === "127.0.0.1"
+    ? ""
+    : "https://fact-or-fiction-multiplayer.onrender.com";
 if(saved){try{session=JSON.parse(saved);connect()}catch{localStorage.removeItem('fof-session')}}
 
 function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function toast(message){toastEl.textContent=message;toastEl.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toastEl.classList.remove('show'),2600)}
-async function api(path,body={}){const res=await fetch('/api/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await res.json();if(!res.ok)throw Error(data.error||'Something went wrong.');if(data.state&&session)update(data.state);return data}
+async function api(path,body={}) {
+  const res=await fetch(API_BASE + '/api/' + path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await res.json();if(!res.ok)throw Error(data.error||'Something went wrong.');if(data.state&&session)update(data.state);return data}
 function update(s){state=s;roomBadge.textContent='ROOM  '+s.code;roomBadge.classList.remove('hidden');render()}
-function connect(){if(!session)return;if(stream)stream.close();stream=new EventSource(`/events?code=${encodeURIComponent(session.code)}&pid=${encodeURIComponent(session.pid)}`);stream.onmessage=e=>{try{const m=JSON.parse(e.data);if(m.type==='state')update(m.data)}catch{}};stream.onerror=()=>{if(!state)setTimeout(()=>api('state',session).then(x=>update(x.state)).catch(()=>logout(false)),2500)};api('state',session).then(x=>update(x.state)).catch(()=>{if(!state)logout(false)})}
+function connect(){if(!session)return;if(stream)stream.close();stream=new EventSource(
+  `${API_BASE}/events?code=${encodeURIComponent(session.code)}&pid=${encodeURIComponent(session.pid)}`
+);stream.onmessage=e=>{try{const m=JSON.parse(e.data);if(m.type==='state')update(m.data)}catch{}};stream.onerror=()=>{if(!state)setTimeout(()=>api('state',session).then(x=>update(x.state)).catch(()=>logout(false)),2500)};api('state',session).then(x=>update(x.state)).catch(()=>{if(!state)logout(false)})}
 function persist(s){session=s;localStorage.setItem('fof-session',JSON.stringify(s));connect()}
 function logout(show=true){if(stream)stream.close();stream=null;session=null;state=null;localStorage.removeItem('fof-session');roomBadge.classList.add('hidden');renderHome();if(show)toast('You left the room.')}
 async function leaveRoom(){try{if(session)await api('leave',session)}catch{}logout()}
