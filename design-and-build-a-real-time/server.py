@@ -3,7 +3,7 @@
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
-import json, secrets, string, threading, time
+import json, secrets, string, threading, time, os
 
 ROOT = Path(__file__).parent
 LOCK = threading.RLock()
@@ -220,6 +220,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as e:
             return self.send_json(500,{"error":"The game hit a server error."})
 
-if __name__=="__main__":
-    print("Fact or Fiction running at http://localhost:8000")
-    ThreadingHTTPServer(("0.0.0.0",8000),Handler).serve_forever()
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", "8000"))
+    print(f"Fact or Fiction running on port {port}")
+    ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()
